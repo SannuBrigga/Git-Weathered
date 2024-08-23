@@ -1,9 +1,54 @@
 import requests
 import argparse
+import json
+import csv
 
 url = "https://api.weatherapi.com/v1/current.json"
 # Make this via env variable
 API_KEY = "d9432060466a4f4a83563950242308"
+
+def save_to_json(filename, data):
+    with open(f"{filename}.json", "w") as file:
+        json.dump(data, file)
+    
+    print("Datos almacenados en formato JSON con éxito...")
+
+def save_to_txt(filename, data):
+    file_data = ""
+    # Parse the raw report data
+    for location_report in data:
+        file_data += f"# {location_report['location']}\n"
+        file_data += f"# {location_report['country']}\n"
+        file_data += f"- Condición climática: {location_report['condition']}\n"
+        file_data += f"- Temperatura: {location_report['temperature']}\n"
+        file_data += f"- Dirección del viento: {location_report['wind_direction']}\n"
+        file_data += f"- Humedad: {location_report['humidity']}\n"
+        file_data += f"- Sensación Térmica: {location_report['feels_like']}\n"
+
+        file_data += f"{''.join(['-'] * 32)}\n"
+
+    with open(f"{filename}.txt", "w") as file:
+        file.write(file_data)
+
+    print("Datos almacenados en formato TXT con éxito...")
+
+def save_to_csv(filename, data):
+    csv.register_dialect('custom_dialect', delimiter='|')
+
+    with open(f"{filename}.csv", "w") as file:
+        writer = csv.DictWriter(file, dialect='custom_dialect', fieldnames=data[0].keys())
+        writer.writeheader()
+
+        for record in data:
+            writer.writerow(record)
+    
+    print("Datos almacenados en formato CSV con éxito...")
+
+Storage = {
+    'json': save_to_json,
+    'csv': save_to_csv,
+    'txt': save_to_txt,
+}    
 
 def main():
     parser = argparse.ArgumentParser(description="App CLI de consulta del clima")
@@ -39,6 +84,10 @@ def main():
             }
 
             weather_report.append(location_report)
+
+    # Parse the data to the formats
+    for storage_format in args.format:
+        Storage[storage_format]("weather_report", weather_report)
 
 if __name__ == "__main__":
     main()
