@@ -48,7 +48,7 @@ Storage = {
     'json': save_to_json,
     'csv': save_to_csv,
     'txt': save_to_txt,
-}    
+}
 
 def main():
     parser = argparse.ArgumentParser(description="App CLI de consulta del clima")
@@ -68,9 +68,18 @@ def main():
                 "key": API_KEY
             }
 
-            response = requests.get(url, params=payload)
+            try:
+                response = requests.get(url, params=payload)
+            except requests.exceptions.RequestException as e:  # This is the correct syntax
+                print("Ocurrió un error al buscar la ubicación")
+                return
 
             response_json = response.json()
+
+            if response_json['error']:
+                if response_json['error']['code'] == 1006:
+                    print("No se encontró la ciudad ingresada")
+                    return
 
             location_report = {
                 'location': response_json['location']['name'],
