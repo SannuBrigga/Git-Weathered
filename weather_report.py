@@ -3,7 +3,7 @@ import argparse
 import json
 import csv
 
-url = "https://api.weatherapi.com/v1/current.json"
+URL = "https://api.weatherapi.com/v1/current.json"
 # Make this via env variable
 API_KEY = "d9432060466a4f4a83563950242308"
 
@@ -50,47 +50,59 @@ Storage = {
     'txt': save_to_txt,
 }
 
-def main():
+def cli_parser():
     parser = argparse.ArgumentParser(description="App CLI de consulta del clima")
     parser.add_argument("-l", "--location", required=True, nargs="+", help="La localidad que desea consultar. Ej: Ciudad del Este - Paraguay")
     parser.add_argument("-f", "--format", default=["txt"], nargs="+", choices=['json', 'csv', 'txt'], help="Formato en el cuál desea obtener los datos. Ej: json, txt, csv")
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+def get_weather_data(location):
+    payload = {
+        "q": location,
+        "lang": "es",
+        "key": API_KEY
+    }
+
+    try:
+        response = requests.get(URL, params=payload)
+    except requests.exceptions.RequestException as e:  # This is the correct syntax
+        return {
+            "error": "Ocurrió un error al buscar la ubicación"
+        }
+
+    response_json = response.json()
+
+    if response_json.get('error'):
+        if response_json['error']['code'] == 1006:
+            return {
+                "error": "No se encontró la ciudad ingresada"
+            }
+
+    return {
+        'location': response_json['location']['name'],
+        'country': response_json['location']['country'],
+        'condition': response_json['current']['condition']['text'],
+        'temperature': response_json['current']['temp_c'],
+        'wind_direction': response_json['current']['wind_dir'],
+        'wind_speed': response_json['current']['wind_kph'],
+        'humidity': response_json['current']['humidity'],
+        'feels_like': response_json['current']['feelslike_c']
+    }
+
+
+def main():
+    args = cli_parser()
 
     weather_report = []
 
     # Parse the location
     if args.location:
         for location in args.location:
-            payload = {
-                "q": location,
-                "lang": "es",
-                "key": API_KEY
-            }
-
-            try:
-                response = requests.get(url, params=payload)
-            except requests.exceptions.RequestException as e:  # This is the correct syntax
-                print("Ocurrió un error al buscar la ubicación")
+            location_report = get_weather_data(location)
+            if location_report.get("error"):
+                print(location_report["error"])
                 return
-
-            response_json = response.json()
-
-            if response_json['error']:
-                if response_json['error']['code'] == 1006:
-                    print("No se encontró la ciudad ingresada")
-                    return
-
-            location_report = {
-                'location': response_json['location']['name'],
-                'country': response_json['location']['country'],
-                'condition': response_json['current']['condition']['text'],
-                'temperature': response_json['current']['temp_c'],
-                'wind_direction': response_json['current']['wind_dir'],
-                'wind_speed': response_json['current']['wind_kph'],
-                'humidity': response_json['current']['humidity'],
-                'feels_like': response_json['current']['feelslike_c']
-            }
 
             weather_report.append(location_report)
 
